@@ -104,3 +104,51 @@ function memoize(fn, options = {}) {
 
   return memoized;
 }
+
+
+let slowSquare = n => n * n;
+
+
+
+let cached = memoize(slowSquare, { maxSize: 3, policy: 'lru' });
+console.log(cached(4));   
+console.log(cached(4));   
+console.log(cached(5));
+console.log(cached(6));
+console.log(cached(7));   
+
+
+
+let cached2 = memoize(slowSquare, { maxSize: 3, policy: 'lfu' });
+console.log(cached2(1));
+console.log(cached2(1)); 
+console.log(cached2(2));
+console.log(cached2(3));
+console.log(cached2(4));  
+
+
+
+let cached3 = memoize(slowSquare, { policy: 'ttl', ttl: 2000 });
+console.log(cached3(9));  
+console.log(cached3(9));  
+setTimeout(() => console.log(cached3(9)), 3000); 
+
+
+let cached3bad = memoize(slowSquare, { policy: 'ttl' });
+console.log(cached3bad(5)); 
+
+
+
+let cached4 = memoize(slowSquare, {
+  maxSize: 2,
+  policy: 'custom',
+  customEvict: (c) => c.delete(c.keys().next().value)
+});
+console.log(cached4(10));
+console.log(cached4(20));
+console.log(cached4(30)); 
+
+let cached4bad = memoize(slowSquare, { maxSize: 2, policy: 'custom', customEvict: 'null' });
+console.log(cached4bad(1));
+console.log(cached4bad(2));
+console.log(cached4bad(3)); 
