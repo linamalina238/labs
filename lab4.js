@@ -1,11 +1,12 @@
 class BiDirectionalPriorityQueue {
   constructor() {
-    this.elements = []; 
+    this.elements = [];
+    this.insertionCounter = 0;
   }
 
- 
   enqueue(item, priority) {
-    this.elements.push({ priority, item });
+    this.elements.push({ priority, item, index: this.insertionCounter });
+    this.insertionCounter++;
   }
 
   #findByPriority(mode) {
@@ -25,15 +26,23 @@ class BiDirectionalPriorityQueue {
       );
     }
 
-    throw new Error(`Невідомий режим: "${mode}". Використовуйте: highest | lowest`);
+    if (mode === "oldest") {
+      return this.elements.reduce((best, current) =>
+        current.index < best.index ? current : best
+      );
+    }
+
+    if (mode === "newest") {
+      return this.elements.reduce((best, current) =>
+        current.index > best.index ? current : best
+      );
+    }
   }
 
-  
   peek(mode) {
     return this.#findByPriority(mode).item;
   }
 
-  
   dequeue(mode) {
     const target = this.#findByPriority(mode);
     this.elements.splice(this.elements.indexOf(target), 1);
@@ -41,19 +50,21 @@ class BiDirectionalPriorityQueue {
   }
 }
 
-
-
 const pq = new BiDirectionalPriorityQueue();
 
-pq.enqueue("задача A", 3);
+pq.enqueue("задача A", 7);
 pq.enqueue("задача B", 1);
-pq.enqueue("задача C", 5);
-pq.enqueue("задача D", 2);
+pq.enqueue("задача C", 3);
+pq.enqueue("задача D", 4);
 
 console.log("--- peek ---");
-console.log("Найвищий:", pq.peek("highest")); 
-console.log("Найнижчий:", pq.peek("lowest"));  
+console.log("Найвищий:", pq.peek("highest"));
+console.log("Найнижчий:", pq.peek("lowest"));
+console.log("Найстаріший:", pq.peek("oldest"));
+console.log("Найновіший:", pq.peek("newest"));
 
 console.log("\n--- dequeue ---");
-console.log("Витягуємо найвищий:", pq.dequeue("highest")); 
-console.log("Витягуємо найнижчий:", pq.dequeue("lowest")); 
+console.log("Витягуємо найвищий:", pq.dequeue("highest"));
+console.log("Витягуємо найнижчий:", pq.dequeue("lowest"));
+console.log("Витягуємо найстаріший:", pq.dequeue("oldest"));
+console.log("Витягуємо найновіший:", pq.dequeue("newest"));
