@@ -18,8 +18,26 @@ function asyncMapCallback(array, asyncFn, callback) {
     });
   });
 }
+
+function asyncMapPromise(array, asyncFn) {
+  return Promise.all(array.map((item) => asyncFn(item)));
+}
+
+async function asyncMapAwait(array, asyncFn) {
+  const results = await Promise.all(array.map((item) => asyncFn(item)));
+  return results;
+}
+
+
 const input = [1, 2, 3, 4, 5];
 const fakeApi = (item) => new Promise(resolve => setTimeout(() => resolve(item * 2), 100));
 
 
 asyncMapCallback(input, (item, done) => setTimeout(() => done(null, item * 2), 100), (err, res) => console.log(res));
+
+
+asyncMapPromise(input, fakeApi).then(res => console.log(res));
+
+
+const res = await asyncMapAwait(input, fakeApi);
+console.log(res);
