@@ -71,3 +71,14 @@ asyncMapCallback(input, fakeApiCallback, (err, res) => console.log(err ? "Error:
     console.error("Aborted:", err.message);
   }
 })();
+
+asyncMapPromise(input, fakeApi)
+  .then(res => console.log("Promise result:", res))
+  .catch(err => console.error("Promise error:", err.message));
+
+
+const ctrl2 = new AbortController();
+setTimeout(() => ctrl2.abort(), 150);
+asyncMapPromise(input, fakeApi, ctrl2.signal)
+  .then(res => console.log("Promise result:", res))
+  .catch(err => console.error("Promise aborted:", err.message));
