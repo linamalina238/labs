@@ -2,8 +2,6 @@ async function* generateUserEvents(total) {
   let id = 1;
 
   while (id <= total) {
-    await new Promise(r => setTimeout(r, 1));
-
     yield {
       userId: id,
       action: Math.random() > 0.5 ? "click" : "view",
@@ -41,4 +39,4 @@ async function main() {
   console.log("Total click amount:", totalClickAmount.toFixed(2));
 }
 
-main();
+main() 
