@@ -4,6 +4,13 @@ let token = "token";
 let apiKey = "123456";
 let authType = "token";
 
+let clientId = "client-id";
+let clientSecret = "client-secret";
+let accessToken = null;
+let tokenExpiry = null;
+
+let jwtToken = null;
+
 const rateLimit = {
   maxRequests: 5,
   windowMs: 10000,
@@ -23,10 +30,33 @@ function checkRateLimit() {
   rateLimit.timestamps.push(now);
 }
 
+async function refreshOAuthToken() {
+  console.log("refreshing oauth token...");
+  const res = await fetch(API_URL + "/oauth/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clientId, clientSecret, grant_type: "client_credentials" }),
+  });
+
+  if (!res.ok) {
+    console.log("oauth token refresh failed:", res.status);
+    throw new Error("oauth refresh failed");
+  }
+
+  const data = await res.json();
+  accessToken = data.access_token;
+  tokenExpiry = Date.now() + data.expires_in * 1000;
+  console.log("oauth token refreshed");
+}
+
 function getHeaders(extra) {
   let h = Object.assign({}, extra || {});
   if (authType === "token") {
     h.Authorization = "Bearer " + token;
+  } else if (authType === "oauth") {
+    h.Authorization = "Bearer " + accessToken;
+  } else if (authType === "jwt") {
+    h.Authorization = "Bearer " + jwtToken;
   } else {
     h["x-api-key"] = apiKey;
   }
@@ -37,6 +67,10 @@ async function proxyRequest(url, options) {
   options = options || {};
 
   checkRateLimit();
+
+  if (authType === "oauth" && (!accessToken || Date.now() >= tokenExpiry)) {
+    await refreshOAuthToken();
+  }
 
   console.log("sending request...", url);
 
@@ -87,4 +121,8 @@ function setRateLimit(maxRequests, windowMs) {
   rateLimit.windowMs = windowMs;
 }
 
-module.exports = { proxyRequest, setAuthType, setRateLimit };
+function setJwtToken(t) {
+  jwtToken = t;
+}
+
+module.exports = { proxyRequest, setAuthType, setRateLimit, setJwtToken };

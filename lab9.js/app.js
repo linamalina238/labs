@@ -1,4 +1,13 @@
-const { log } = require("./logger");
+const { log, setOutput, setFormatter } = require("./logger");
+
+setOutput("both", "app.log");
+
+setFormatter((level, fnName, type, data, elapsed) => {
+  const timestamp = new Date().toISOString();
+  if (type === "call") return `>> [${level}] ${fnName}(${JSON.stringify(data)}) @ ${timestamp}`;
+  if (type === "return") return `<< [${level}] ${fnName} = ${JSON.stringify(data)} in ${elapsed}ms`;
+  if (type === "error") return `!! [ERROR] ${fnName}: ${data}`;
+});
 
 const add = log({ level: "INFO" })(function add(a, b) {
   return a + b;
@@ -20,4 +29,4 @@ async function run() {
     await fail(1);
   } catch (e) {}
 }
-run() 
+run();
