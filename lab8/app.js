@@ -1,18 +1,17 @@
-const proxyRequest = require("./proxy");
+const { proxyRequest, setAuthType } = require("./proxy");
 
 async function run() {
   try {
     let posts = await proxyRequest("/posts");
-    console.log("first post:", posts[5]);
+    console.log("first post:", posts[7]);
 
-   
+    setAuthType("apiKey");
     let users = await proxyRequest("/users");
     console.log("users count:", users.length);
 
     if (users && users[0]) {
       console.log("first user name:", users[0].name);
     }
-
   } catch (err) {
     console.log("run failed:", err.message);
   }

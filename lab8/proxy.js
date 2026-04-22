@@ -57,8 +57,10 @@ async function proxyRequest(url, options) {
     console.log("error2");
     return null;
   }
-
-  return data;
+  return data;}
+function setAuthType(type) {
+  authType = type;
 }
 
-module.exports = proxyRequest;
+
+module.exports = { proxyRequest, setAuthType };
