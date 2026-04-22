@@ -4,6 +4,11 @@ const LEVELS = ["DEBUG", "INFO", "ERROR"];
 let output = "console";
 let logFile = "app.log";
 let formatter = null;
+let minLevel = "DEBUG";
+
+function shouldLog(level) {
+  return LEVELS.indexOf(level) >= LEVELS.indexOf(minLevel);
+}
 
 function defaultFormat(level, fnName, type, data, elapsed) {
   const timestamp = new Date().toISOString();
@@ -25,25 +30,26 @@ function writeLog(msg) {
 
 function log(options) {
   const level = (options && options.level) || "INFO";
+  if (!LEVELS.includes(level)) throw new Error("unknown level: " + level);
 
   return function(fn) {
     return async function(...args) {
       const start = Date.now();
       const fmt = formatter || defaultFormat;
 
-      writeLog(fmt(level, fn.name, "call", args, null));
+      if (shouldLog(level)) writeLog(fmt(level, fn.name, "call", args, null));
 
       try {
         const result = await fn(...args);
         const elapsed = Date.now() - start;
 
-        if (level !== "ERROR") {
+        if (level !== "ERROR" && shouldLog(level)) {
           writeLog(fmt(level, fn.name, "return", result, elapsed));
         }
 
         return result;
       } catch (e) {
-        writeLog(fmt(level, fn.name, "error", e.message, null));
+        if (shouldLog("ERROR")) writeLog(fmt(level, fn.name, "error", e.message, null));
         throw e;
       }
     };
@@ -59,4 +65,8 @@ function setFormatter(fn) {
   formatter = fn;
 }
 
-module.exports = { log, setOutput, setFormatter };
+function setMinLevel(level) {
+  minLevel = level;
+}
+
+module.exports = { log, setOutput, setFormatter, setMinLevel };
