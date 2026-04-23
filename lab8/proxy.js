@@ -4,6 +4,25 @@ let token = "token";
 let apiKey = "123456";
 let authType = "token";
 
+const rateLimit = {
+  maxRequests: 5,
+  windowMs: 10000,
+  timestamps: [],
+};
+
+function checkRateLimit() {
+  const now = Date.now();
+  rateLimit.timestamps = rateLimit.timestamps.filter(t => now - t < rateLimit.windowMs);
+
+  if (rateLimit.timestamps.length >= rateLimit.maxRequests) {
+    const wait = rateLimit.windowMs - (now - rateLimit.timestamps[0]);
+    console.log(`rate limit reached, retry in ${wait}ms`);
+    throw new Error("rate limit exceeded");
+  }
+
+  rateLimit.timestamps.push(now);
+}
+
 function getHeaders(extra) {
   let h = Object.assign({}, extra || {});
   if (authType === "token") {
@@ -17,16 +36,16 @@ function getHeaders(extra) {
 async function proxyRequest(url, options) {
   options = options || {};
 
+  checkRateLimit();
+
   console.log("sending request...", url);
 
   let headers = getHeaders(options.headers);
 
- 
   let finalOptions = {
     method: options.method || "GET",
     headers: headers,
   };
-
 
   let res;
 
@@ -40,7 +59,6 @@ async function proxyRequest(url, options) {
   if (!res.ok) {
     console.log("bad response:", res.status);
 
-   
     if (res.status === 401) {
       token = "new-token-" + Date.now();
       console.log("token refreshed");
@@ -57,10 +75,16 @@ async function proxyRequest(url, options) {
     console.log("error2");
     return null;
   }
-  return data;}
+  return data;
+}
+
 function setAuthType(type) {
   authType = type;
 }
 
+function setRateLimit(maxRequests, windowMs) {
+  rateLimit.maxRequests = maxRequests;
+  rateLimit.windowMs = windowMs;
+}
 
-module.exports = { proxyRequest, setAuthType };
+module.exports = { proxyRequest, setAuthType, setRateLimit };

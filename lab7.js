@@ -2,29 +2,19 @@ const EventEmitter = require("events");
 
 const bus = new EventEmitter();
 
-class User {
-  constructor(name) {
-    this.name = name;
-    this.handler = (data) => {
-      console.log(`${this.name} got message:`, data);
-    };
-    bus.on("message", this.handler);
-  }
+bus.on("message", (data) => {
+  console.log("got message:", data);
+});
 
-  leave() {
-    bus.off("message", this.handler);
-    console.log(`${this.name} unsubscribed`);
-  }
+bus.on("message", (data) => {
+  console.log("listener2 got:", data);
+});
 
-  send(text) {
-    bus.emit("message", text);
-  }
-}
+const handler = (data) => console.log("temp listener:", data);
+bus.on("message", handler);
 
-const a = new User("a");
-const b = new User("b");
-const c = new User("c");
+bus.emit("message", "ᓚᘏᗢ");
+bus.emit("message", "☆*: .｡. o(≧▽≦)o .｡.:*☆");
 
-a.send("ᓚᘏᗢ");
-c.leave();
-b.send("𓆉");
+bus.off("message", handler);
+bus.emit("message", "after unsub");
