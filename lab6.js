@@ -2,6 +2,10 @@ async function* generateUserEvents(total) {
   let id = 1;
 
   while (id <= total) {
+    if (Math.random() < 0.00001) {
+      throw new Error(`Generator error at event ${id}`);
+    }
+
     yield {
       userId: id,
       action: Math.random() > 0.5 ? "click" : "view",
@@ -19,8 +23,8 @@ async function main() {
   let processed = 0;
   let totalClickAmount = 0;
 
-  for await (const event of stream) {
-    try {
+  try {
+    for await (const event of stream) {
       if (event.action === "click") {
         totalClickAmount += event.amount;
       }
@@ -30,13 +34,14 @@ async function main() {
       if (processed % 10000 === 0) {
         console.log(`Processed ${processed} events`);
       }
-    } catch (err) {
-      console.error("Failed to process event:", err);
     }
+  } catch (err) {
+    console.error("Stream error:", err.message);
+    throw err;
   }
 
   console.log("Finished processing");
   console.log("Total click amount:", totalClickAmount.toFixed(2));
 }
 
-main() 
+main().catch(err => console.error("Fatal:", err.message));
