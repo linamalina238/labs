@@ -1,7 +1,6 @@
 const { proxyRequest, setAuthType, setRateLimit, setJwtToken } = require("./proxy");
 
 async function run() {
-  setRateLimit(3, 10000);
   try {
     await proxyRequest("/posts");
     await proxyRequest("/users");
@@ -11,10 +10,6 @@ async function run() {
     console.log("run failed:", err.message);
   }
 }
-
-setAuthType("apikey");
-setRateLimit(3, 10000);
-run();
 
 async function runJwt() {
   setAuthType("jwt");
@@ -26,4 +21,11 @@ async function runJwt() {
   }
 }
 
-runJwt();
+async function main() {
+  setAuthType("apikey");
+  setRateLimit(3, 10000);
+  await run();
+  await runJwt();
+}
+
+main();

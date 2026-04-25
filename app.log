@@ -4,3 +4,9 @@
 << [DEBUG] fetchData = {"id":42,"data":"data"} in 1ms
 >> [ERROR] fail([1]) @ 2026-04-24T10:55:48.822Z
 !! [ERROR] fail: error
+>> [INFO] add([2,3]) @ 2026-04-25T11:16:48.055Z
+<< [INFO] add = 5 in 5ms
+>> [DEBUG] fetchData([42]) @ 2026-04-25T11:16:48.061Z
+<< [DEBUG] fetchData = {"id":42,"data":"data"} in 1ms
+>> [ERROR] fail([1]) @ 2026-04-25T11:16:48.063Z
+!! [ERROR] fail: error

@@ -1,6 +1,7 @@
-const { log, setOutput, setFormatter } = require("./logger");
+const { log, setOutput, setFormatter, setMinLevel } = require("./logger");
 
 setOutput("both", "app.log");
+setMinLevel("DEBUG");
 
 setFormatter((level, fnName, type, data, elapsed) => {
   const timestamp = new Date().toISOString();
