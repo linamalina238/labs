@@ -1,128 +1,82 @@
-const API_URL = "https://jsonplaceholder.typicode.com";
-
-let token = "token";
-let apiKey = "123456";
-let authType = "token";
-
-let clientId = "client-id";
-let clientSecret = "client-secret";
-let accessToken = null;
-let tokenExpiry = null;
-
-let jwtToken = null;
-
-const rateLimit = {
-  maxRequests: 5,
-  windowMs: 10000,
-  timestamps: [],
-};
-
-function checkRateLimit() {
-  const now = Date.now();
-  rateLimit.timestamps = rateLimit.timestamps.filter(t => now - t < rateLimit.windowMs);
-
-  if (rateLimit.timestamps.length >= rateLimit.maxRequests) {
-    const wait = rateLimit.windowMs - (now - rateLimit.timestamps[0]);
-    console.log(`rate limit reached, retry in ${wait}ms`);
-    throw new Error("rate limit exceeded");
+class ApiKeyProxy {
+  constructor(client, apiKey) {
+    this.client = client;
+    this.apiKey = apiKey;
   }
-
-  rateLimit.timestamps.push(now);
+  async request(req) {
+    return this.client.request({
+      ...req,
+      headers: { ...req.headers, "X-API-Key": this.apiKey },
+    });
+  }
 }
 
-async function refreshOAuthToken() {
-  console.log("refreshing oauth token...");
-  const res = await fetch(API_URL + "/oauth/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ clientId, clientSecret, grant_type: "client_credentials" }),
-  });
-
-  if (!res.ok) {
-    console.log("oauth token refresh failed:", res.status);
-    throw new Error("oauth refresh failed");
+class JwtProxy {
+  constructor(client, getToken) {
+    this.client = client;
+    this.getToken = getToken;
   }
-
-  const data = await res.json();
-  accessToken = data.access_token;
-  tokenExpiry = Date.now() + data.expires_in * 1000;
-  console.log("oauth token refreshed");
+  async request(req) {
+    const token = await this.getToken();
+    return this.client.request({
+      ...req,
+      headers: { ...req.headers, Authorization: `Bearer ${token}` },
+    });
+  }
 }
 
-function getHeaders(extra) {
-  let h = Object.assign({}, extra || {});
-  if (authType === "token") {
-    h.Authorization = "Bearer " + token;
-  } else if (authType === "oauth") {
-    h.Authorization = "Bearer " + accessToken;
-  } else if (authType === "jwt") {
-    h.Authorization = "Bearer " + jwtToken;
-  } else {
-    h["x-api-key"] = apiKey;
+class OAuthProxy {
+  constructor(client, { accessToken, refreshToken, refreshFn }) {
+    this.client = client;
+    this.accessToken = accessToken;
+    this.refreshToken = refreshToken;
+    this.refreshFn = refreshFn;
   }
-  return h;
-}
-
-async function proxyRequest(url, options) {
-  options = options || {};
-
-  checkRateLimit();
-
-  if (authType === "oauth" && (!accessToken || Date.now() >= tokenExpiry)) {
-    await refreshOAuthToken();
-  }
-
-  console.log("sending request...", url);
-
-  let headers = getHeaders(options.headers);
-
-  let finalOptions = {
-    method: options.method || "GET",
-    headers: headers,
-  };
-
-  let res;
-
-  try {
-    res = await fetch(API_URL + url, finalOptions);
-  } catch (e) {
-    console.log("error");
-    throw e;
-  }
-
-  if (!res.ok) {
-    console.log("bad response:", res.status);
-
-    if (res.status === 401) {
-      token = "new-token-" + Date.now();
-      console.log("token refreshed");
+  async request(req) {
+    try {
+      return await this.client.request({
+        ...req,
+        headers: { ...req.headers, Authorization: `Bearer ${this.accessToken}` },
+      });
+    } catch (err) {
+      if (err.status === 401) {
+        this.accessToken = await this.refreshFn(this.refreshToken);
+        return this.client.request({
+          ...req,
+          headers: { ...req.headers, Authorization: `Bearer ${this.accessToken}` },
+        });
+      }
+      throw err;
     }
-
-    throw new Error("request failed");
   }
+}
 
-  let data;
-
-  try {
-    data = await res.json();
-  } catch (e) {
-    console.log("error2");
-    return null;
+class LoggingProxy {
+  constructor(client) {
+    this.client = client;
   }
-  return data;
+  async request(req) {
+    console.log(`[LOG] ${req.method ?? "GET"} ${req.url}`);
+    const start = Date.now();
+    const res = await this.client.request(req);
+    console.log(`[LOG] done in ${Date.now() - start}ms`);
+    return res;
+  }
 }
 
-function setAuthType(type) {
-  authType = type;
+class RateLimitProxy {
+  constructor(client, { limit, windowMs }) {
+    this.client = client;
+    this.limit = limit;
+    this.windowMs = windowMs;
+    this.calls = [];
+  }
+  async request(req) {
+    const now = Date.now();
+    this.calls = this.calls.filter(t => now - t < this.windowMs);
+    if (this.calls.length >= this.limit) throw new Error("Rate limit exceeded");
+    this.calls.push(now);
+    return this.client.request(req);
+  }
 }
-
-function setRateLimit(maxRequests, windowMs) {
-  rateLimit.maxRequests = maxRequests;
-  rateLimit.windowMs = windowMs;
-}
-
-function setJwtToken(t) {
-  jwtToken = t;
-}
-
-module.exports = { proxyRequest, setAuthType, setRateLimit, setJwtToken };
+module.exports = { ApiKeyProxy, JwtProxy, OAuthProxy, LoggingProxy, RateLimitProxy };
