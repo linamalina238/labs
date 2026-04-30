@@ -7,7 +7,11 @@ class SafeBus extends EventEmitter {
       try {
         listener(...args);
       } catch (err) {
-        this.emit("error", err);
+        if (this.listenerCount("error") === 0) {
+          console.error("Unhandled error (no error listener):", err.message);
+        } else {
+          this.emit("error", err);
+        }
       }
     }
   }
@@ -36,3 +40,8 @@ bus.emit("message", "☆*: .｡. o(≧▽≦)o .｡.:*☆");
 
 bus.off("message", temp);
 bus.emit("message", "after unsub");
+
+
+const bus2 = new SafeBus();
+bus2.on("message", () => { throw new Error("no error listener here"); });
+bus2.emit("message", "test");
