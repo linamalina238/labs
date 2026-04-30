@@ -1,72 +1,34 @@
-const fs = require("fs");
-const LEVELS = ["DEBUG", "INFO", "ERROR"];
+import fs from "fs";
 
-let output = "console";
-let logFile = "app.log";
-let formatter = null;
-let minLevel = "DEBUG";
+const LEVELS = { ERROR: 0, INFO: 1, DEBUG: 2 };
 
-function shouldLog(level) {
-  return LEVELS.indexOf(level) >= LEVELS.indexOf(minLevel);
-}
+const plainFormatter = ({ timestamp, level, name, args, result, error, duration }) => {
+  let msg = `[${timestamp}] [${level}] ${name}`;
+  if (args !== undefined) msg += ` args=${JSON.stringify(args)}`;
+  if (result !== undefined) msg += ` result=${JSON.stringify(result)}`;
+  if (error !== undefined) msg += ` error=${error.message}`;
+  if (duration !== undefined) msg += ` (${duration}ms)`;
+  return msg;
+};
 
-function defaultFormat(level, fnName, type, data, elapsed) {
-  const timestamp = new Date().toISOString();
-  if (type === "call") return `[${timestamp}] [${level}] calling ${fnName}, args: ${JSON.stringify(data)}`;
-  if (type === "return") return `[${timestamp}] [${level}] ${fnName} returned: ${JSON.stringify(data)} (${elapsed}ms)`;
-  if (type === "error") return `[${timestamp}] [ERROR] ${fnName} threw: ${data}`;
-}
+const jsonFormatter = (entry) => JSON.stringify(entry);
 
-function writeLog(msg) {
-  if (output === "console") {
-    console.log(msg);
-  } else if (output === "file") {
-    fs.appendFileSync(logFile, msg + "\n");
-  } else if (output === "both") {
-    console.log(msg);
-    fs.appendFileSync(logFile, msg + "\n");
+const consoleTransport = (msg) => console.log(msg);
+
+const fileTransport = (path) => (msg) => fs.appendFileSync(path, msg + "\n", "utf8");
+
+class Logger {
+  constructor({ level = "INFO", transport = consoleTransport, formatter = plainFormatter } = {}) {
+    this.level = level;
+    this.transport = transport;
+    this.formatter = formatter;
+  }
+
+  log(level, entry) {
+    if (LEVELS[level] > LEVELS[this.level]) return;
+    const line = this.formatter({ timestamp: new Date().toISOString(), level, ...entry });
+    this.transport(line);
   }
 }
 
-function log(options) {
-  const level = (options && options.level) || "INFO";
-  if (!LEVELS.includes(level)) throw new Error("unknown level: " + level);
-
-  return function(fn) {
-    return async function(...args) {
-      const start = Date.now();
-      const fmt = formatter || defaultFormat;
-
-      if (shouldLog(level)) writeLog(fmt(level, fn.name, "call", args, null));
-
-      try {
-        const result = await fn(...args);
-        const elapsed = Date.now() - start;
-
-        if (level !== "ERROR" && shouldLog(level)) {
-          writeLog(fmt(level, fn.name, "return", result, elapsed));
-        }
-
-        return result;
-      } catch (e) {
-        if (shouldLog("ERROR")) writeLog(fmt(level, fn.name, "error", e.message, null));
-        throw e;
-      }
-    };
-  };
-}
-
-function setOutput(type, file) {
-  output = type;
-  if (file) logFile = file;
-}
-
-function setFormatter(fn) {
-  formatter = fn;
-}
-
-function setMinLevel(level) {
-  minLevel = level;
-}
-
-module.exports = { log, setOutput, setFormatter, setMinLevel };
+export { Logger, plainFormatter, jsonFormatter, consoleTransport, fileTransport, LEVELS };
