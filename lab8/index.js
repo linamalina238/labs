@@ -1,30 +1,20 @@
 const { BaseClient } = require("./base");
 const { ApiKeyProxy, LoggingProxy, RateLimitProxy } = require("./proxy");
+const { GitHubService } = require("./service");
 
 const base = new BaseClient();
 const withApiKey = new ApiKeyProxy(base, process.env.GITHUB_TOKEN ?? "demo_key");
 const withLogging = new LoggingProxy(withApiKey);
-const withRateLimit = new RateLimitProxy(withLogging, { limit: 3, windowMs: 10000 });
+const withRateLimit = new RateLimitProxy(withLogging, { limit: 5, windowMs: 10000 });
+
+const github = new GitHubService(withRateLimit);
 
 (async () => {
-  const users = ["torvalds", "gaearon", "tj"];
+  const user = await github.getUser("torvalds");
+  console.log("Login:", user.login);
+  console.log("Name:", user.name);
+  console.log("Public repos:", user.public_repos);
 
-  for (const username of users) {
-    try {
-      const user = await withRateLimit.request({ url: `https://api.github.com/users/${username}` });
-      console.log(`${user.login} — ${user.public_repos} repos`);
-    } catch (err) {
-      console.error(`[${username}] Error:`, err.message);
-    }
-  }
-
-  console.log("\n--- testing rate limit ---");
-  for (let i = 1; i <= 3; i++) {
-    try {
-      await withRateLimit.request({ url: "https://api.github.com/users/torvalds" });
-      console.log(`Request ${i}: ok`);
-    } catch (err) {
-      console.error(`Request ${i}:`, err.message);
-    }
-  }
+  const repos = await github.getRepos("torvalds");
+  console.log("Repos:", repos.slice(0, 5).map(r => r.name));
 })().catch(console.error);
