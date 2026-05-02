@@ -10,3 +10,4 @@
 << [DEBUG] fetchData = {"id":42,"data":"data"} in 1ms
 >> [ERROR] fail([1]) @ 2026-04-25T11:16:48.063Z
 !! [ERROR] fail: error
+[2026-05-08T08:38:43.294Z] [INFO] save args=["record-99"] result="saved: record-99" (0ms)
